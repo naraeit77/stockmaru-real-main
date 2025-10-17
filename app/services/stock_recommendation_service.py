@@ -106,7 +106,10 @@ class StockRecommendationService:
             rsi = self.calculate_rsi(prices)
             macd, signal = self.calculate_macd(prices)
             macd_buy_signal = macd > signal
-            recommended = golden_cross & (rsi < 50) & macd_buy_signal
+
+            # 매수 조건: 3가지 중 2개 이상 만족
+            buy_conditions = golden_cross.astype(int) + (rsi < 50).astype(int) + macd_buy_signal.astype(int)
+            recommended = buy_conditions >= 2
 
             # 가장 최근 날짜의 결과만 저장
             latest_date = df.index[-1]
@@ -371,12 +374,13 @@ class StockRecommendationService:
             tech_df["MACD_매수_신호"] = tech_df["MACD_매수_신호"].astype(bool)
             tech_df["RSI"] = pd.to_numeric(tech_df["RSI"])
             
-            # 필터링: 골든_크로스=true, MACD_매수_신호=true, RSI<50 중 하나 이상
-            mask_golden = tech_df["골든_크로스"] == True
-            mask_macd = tech_df["MACD_매수_신호"] == True
-            mask_rsi = tech_df["RSI"] < 50
-            combined_mask = np.logical_or.reduce([mask_golden, mask_macd, mask_rsi])
-            filtered_tech_df = tech_df[combined_mask]
+            # 필터링: 골든_크로스=true, MACD_매수_신호=true, RSI<50 중 2개 이상
+            tech_df["조건_충족_개수"] = (
+                tech_df["골든_크로스"].astype(int) +
+                tech_df["MACD_매수_신호"].astype(int) +
+                (tech_df["RSI"] < 50).astype(int)
+            )
+            filtered_tech_df = tech_df[tech_df["조건_충족_개수"] >= 2]
             
             if filtered_tech_df.empty:
                 return {"message": "조건을 만족하는 기술적 지표가 없습니다", "results": []}
@@ -434,17 +438,14 @@ class StockRecommendationService:
                 results.append(combined_data)
             
             # 6. 매수 추천 조건에 따른 추가 필터링 후 순위 계산
+            # 수정: 기술적 지표 2개 이상이면 모두 추천 (감정 점수 무관)
             final_results = []
             for item in results:
-                sentiment_score = item["sentiment_score"]
                 tech_conditions = [item["golden_cross"], item["rsi"] < 50, item["macd_buy_signal"]]
-                
-                if sentiment_score is not None and sentiment_score >= 0.15:
-                    if sum(tech_conditions) >= 2:
-                        final_results.append(item)
-                else:
-                    if sum(tech_conditions) >= 3:
-                        final_results.append(item)
+
+                # 기술적 지표 3가지 중 2개 이상 만족하면 추천
+                if sum(tech_conditions) >= 2:
+                    final_results.append(item)
 
             # 7. 종합 점수 계산 및 정렬
             for item in final_results:
