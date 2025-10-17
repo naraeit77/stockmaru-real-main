@@ -1,4 +1,4 @@
-# banbu-stockTrading-real
+# StockMaru Trading-real
 
 
 
