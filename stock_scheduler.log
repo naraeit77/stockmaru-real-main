@@ -2206,3 +2206,30 @@ RuntimeError: asyncio.run() cannot be called from a running event loop
 2025-10-17 23:50:04,913 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_recommendations?select=%2A&order=%EB%82%A0%EC%A7%9C.desc "HTTP/2 200 OK"
 2025-10-17 23:50:04,964 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_analysis_results?select=%2A&order=created_at.desc "HTTP/2 200 OK"
 2025-10-17 23:50:05,009 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/ticker_sentiment_analysis?select=%2A&average_sentiment_score=gte.0.15 "HTTP/2 200 OK"
+2025-10-17 23:50:31,299 - stock_scheduler - INFO - 미국 장 시간 확인: 2025-10-17 23:50:31 (뉴욕: 2025-10-17 10:50:31)
+2025-10-17 23:50:31,304 - stock_scheduler - INFO - 미국 장 시간 확인: 2025-10-17 23:50:31 (뉴욕: 2025-10-17 10:50:31)
+2025-10-17 23:50:31,430 - stock_scheduler - INFO - 매도 대상 종목이 없습니다.
+2025-10-17 23:50:31,432 - stock_scheduler - INFO - 매도 대상 종목이 없습니다.
+2025-10-17 23:50:35,108 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_recommendations?select=%2A&order=%EB%82%A0%EC%A7%9C.desc "HTTP/2 200 OK"
+2025-10-17 23:50:35,157 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_analysis_results?select=%2A&order=created_at.desc "HTTP/2 200 OK"
+2025-10-17 23:50:35,196 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/ticker_sentiment_analysis?select=%2A&average_sentiment_score=gte.0.15 "HTTP/2 200 OK"
+2025-10-17 23:51:05,317 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_recommendations?select=%2A&order=%EB%82%A0%EC%A7%9C.desc "HTTP/2 200 OK"
+2025-10-17 23:51:05,384 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_analysis_results?select=%2A&order=created_at.desc "HTTP/2 200 OK"
+2025-10-17 23:51:05,437 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/ticker_sentiment_analysis?select=%2A&average_sentiment_score=gte.0.15 "HTTP/2 200 OK"
+2025-10-17 23:51:31,623 - stock_scheduler - INFO - 미국 장 시간 확인: 2025-10-17 23:51:31 (뉴욕: 2025-10-17 10:51:31)
+2025-10-17 23:51:31,623 - stock_scheduler - INFO - 미국 장 시간 확인: 2025-10-17 23:51:31 (뉴욕: 2025-10-17 10:51:31)
+2025-10-17 23:51:31,732 - stock_scheduler - INFO - 매도 대상 종목이 없습니다.
+2025-10-17 23:51:31,733 - stock_scheduler - INFO - 매도 대상 종목이 없습니다.
+2025-10-17 23:51:35,712 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_recommendations?select=%2A&order=%EB%82%A0%EC%A7%9C.desc "HTTP/2 200 OK"
+2025-10-17 23:51:35,821 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_analysis_results?select=%2A&order=created_at.desc "HTTP/2 200 OK"
+2025-10-17 23:51:35,916 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/ticker_sentiment_analysis?select=%2A&average_sentiment_score=gte.0.15 "HTTP/2 200 OK"
+2025-10-17 23:52:06,308 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_recommendations?select=%2A&order=%EB%82%A0%EC%A7%9C.desc "HTTP/2 200 OK"
+2025-10-17 23:52:06,397 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_analysis_results?select=%2A&order=created_at.desc "HTTP/2 200 OK"
+2025-10-17 23:52:06,448 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/ticker_sentiment_analysis?select=%2A&average_sentiment_score=gte.0.15 "HTTP/2 200 OK"
+2025-10-17 23:52:31,906 - stock_scheduler - INFO - 미국 장 시간 확인: 2025-10-17 23:52:31 (뉴욕: 2025-10-17 10:52:31)
+2025-10-17 23:52:31,921 - stock_scheduler - INFO - 미국 장 시간 확인: 2025-10-17 23:52:31 (뉴욕: 2025-10-17 10:52:31)
+2025-10-17 23:52:32,032 - stock_scheduler - INFO - 매도 대상 종목이 없습니다.
+2025-10-17 23:52:32,038 - stock_scheduler - INFO - 매도 대상 종목이 없습니다.
+2025-10-17 23:52:36,552 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_recommendations?select=%2A&order=%EB%82%A0%EC%A7%9C.desc "HTTP/2 200 OK"
+2025-10-17 23:52:36,664 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/stock_analysis_results?select=%2A&order=created_at.desc "HTTP/2 200 OK"
+2025-10-17 23:52:36,724 - httpx - INFO - HTTP Request: GET https://tyhzqopxrqxfkrlgtttp.supabase.co/rest/v1/ticker_sentiment_analysis?select=%2A&average_sentiment_score=gte.0.15 "HTTP/2 200 OK"
