@@ -4,13 +4,16 @@ AI 기반 주식 거래 시스템의 설치부터 실행, 종료까지 전체 �
 시스템 요구사항
 초기 설정
 애플리케이션 시작하기
+대시보드 사용하기 (localhost:3000)
 주요 기능 사용법
 애플리케이션 종료하기
 문제 해결
 시스템 요구사항
 필수 소프트웨어
 Python: 3.8 이상 (권장: 3.10+)
+Node.js: 18.x 이상 (대시보드용, 권장: 20.x LTS)
 pip: 최신 버전
+npm: 최신 버전
 메모리: 최소 4GB RAM (모델 학습 시 8GB 권장)
 디스크 공간: 최소 2GB 여유 공간
 필수 API 키
@@ -111,6 +114,70 @@ Swagger UI 자동 문서:
 http://localhost:8000/docs
 ReDoc 문서:
 http://localhost:8000/redoc
+대시보드 사용하기 (localhost:3000)
+웹 기반 실시간 모니터링 대시보드
+StockMaru는 Next.js 기반의 실시간 대시보드를 제공합니다. 백엔드 API 서버가 실행된 상태에서 대시보드를 시작하세요.
+1단계: 대시보드 디렉토리로 이동
+cd dashboard
+2단계: 의존성 설치 (최초 1회만)
+npm install
+예상 소요 시간: 2-5분 (네트워크 속도에 따라 상이)
+3단계: 환경 변수 설정
+dashboard/.env.local 파일 생성 (예시 파일 복사):
+cp .env.local.example .env.local
+기본 설정 내용:
+# FastAPI Backend URL
+NEXT_PUBLIC_API_URL=http://localhost:8000
+⚠️ 주의: 백엔드 서버(localhost:8000)가 실행 중이어야 정상 작동합니다.
+4단계: 개발 서버 실행
+npm run dev
+서버 시작 확인 메시지:
+  ▲ Next.js 15.5.6
+  - Local:        http://localhost:3000
+  - Network:      http://192.168.x.x:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.3s
+5단계: 브라우저에서 접속
+http://localhost:3000
+대시보드 주요 기능
+📊 실시간 잔고 현황
+보유 중인 해외주식 실시간 조회
+종목별 평가금액 및 수익률 표시
+10초마다 자동 갱신
+🎯 AI 추천 종목
+종합 분석 기반 매수 추천 (정확도 ≥80%, 상승확률 ≥3%)
+기술적 지표: 골든크로스, MACD, RSI
+뉴스 감정 분석 (sentiment score ≥0.15)
+종합 점수 기반 순위 정렬
+30초마다 자동 갱신
+🚨 매도 대상 종목
+익절/손절 조건 충족 종목 자동 감지
+기술적 매도 신호 분석 (데드크로스, RSI 과매수)
+매도 사유 상세 표시
+30초마다 자동 갱신
+⚡ 자동매매 제어
+매수/매도 스케줄러 실시간 상태 모니터링
+스케줄러 시작/중지 원클릭 제어
+즉시 매수/매도 실행 기능
+다음 실행 시간 표시
+5초마다 자동 갱신
+대시보드 프로덕션 빌드 (선택사항)
+성능 최적화가 필요한 경우:
+# 프로덕션 빌드
+npm run build
+
+# 프로덕션 서버 시작
+npm start
+브라우저에서 http://localhost:3000 접속
+대시보드 종료하기
+터미널에서 Ctrl+C 입력:
+^C
+종료 확인 메시지:
+ ✓ Compiled in 123ms
+ ⨯ Aborted
+프로젝트 루트로 돌아가기:
+cd ..
 주요 기능 사용법
 1. 계좌 잔고 조회
 엔드포인트: GET /balance
@@ -165,7 +232,14 @@ curl -X POST http://localhost:8000/update_data
 }
 ⏱️ 참고: 백그라운드 작업이므로 즉시 응답을 반환하지만, 실제 처리는 10-40분 소요됩니다.
 애플리케이션 종료하기
-1단계: FastAPI 서버 종료
+1단계: 대시보드 종료 (실행 중인 경우)
+대시보드 터미널에서:
+# Ctrl+C 입력
+^C
+종료 확인 메시지:
+ ✓ Compiled in 123ms
+ ⨯ Aborted
+2단계: FastAPI 서버 종료
 서버가 실행 중인 터미널에서:
 # Ctrl+C 입력 (Mac/Linux/Windows 공통)
 ^C
@@ -174,9 +248,9 @@ INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
 INFO:     Finished server process [12346]
-2단계: 가상 환경 비활성화 (선택사항)
+3단계: 가상 환경 비활성화 (선택사항)
 deactivate
-3단계: 백그라운드 프로세스 확인 (안전 종료)
+4단계: 백그라운드 프로세스 확인 (안전 종료)
 혹시 남아있는 프로세스 확인:
 # 실행 중인 Python 프로세스 확인
 ps aux | grep python
@@ -216,6 +290,49 @@ API 키 만료 여부 확인 및 재발급
 # 토큰 재발급 테스트
 python getBalance.py
 토큰은 24시간마다 자동 갱신되지만, 수동 갱신이 필요한 경우 위 명령어 실행.
+대시보드 관련 문제
+대시보드 포트 충돌 (3000번 포트)
+증상: Port 3000 is already in use 해결방법:
+# 3000번 포트 사용 중인 프로세스 확인
+lsof -i :3000
+
+# 해당 프로세스 종료
+kill -9 [PID]
+
+# 또는 다른 포트 사용
+npm run dev -- -p 3001
+대시보드 백엔드 연결 실패
+증상: 대시보드에서 "데이터를 불러올 수 없습니다" 표시 해결방법:
+1. FastAPI 백엔드 서버 실행 확인 (http://localhost:8000)
+2. dashboard/.env.local 파일 확인:
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+3. 브라우저 개발자 도구(F12) 콘솔에서 네트워크 오류 확인
+4. CORS 설정 확인 (main.py에서 allow_origins 설정)
+npm install 실패
+증상: EACCES 권한 오류 또는 의존성 충돌 해결방법:
+# npm 캐시 정리
+npm cache clean --force
+
+# node_modules 삭제 후 재설치
+rm -rf node_modules package-lock.json
+npm install
+
+# 권한 문제 시 (sudo 사용 권장하지 않음)
+# npm 글로벌 디렉토리 권한 수정
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+대시보드 빌드 오류
+증상: Type errors 또는 Build failed 해결방법:
+# TypeScript 타입 체크
+npm run lint
+
+# node_modules 재설치
+rm -rf .next node_modules
+npm install
+
+# 캐시 삭제 후 재시작
+rm -rf .next
+npm run dev
 자동화 스케줄링 (선택사항)
 매일 자동으로 데이터 수집 및 예측을 실행하려면:
 cron 설정 (Mac/Linux)
@@ -253,20 +370,29 @@ Windows 작업 스케줄러
          ▼
 ┌─────────────────┐
 │   Supabase DB   │  predicted_stocks 테이블
-│                 │
+│                 │  stock_analysis_results 테이블
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
 │  3. FastAPI     │  main.py (실시간 서비스)
-│  REST API       │
+│  REST API       │  http://localhost:8000
 └────────┬────────┘
          │
-         ▼
-┌─────────────────┐
-│  4. 사용자/앱   │  http://localhost:8000
-│                 │
-└─────────────────┘
+         ├─────────────────────┐
+         │                     │
+         ▼                     ▼
+┌─────────────────┐   ┌─────────────────┐
+│  4-A. Dashboard │   │  4-B. 외부 앱    │
+│  Next.js        │   │  모바일/웹      │
+│  localhost:3000 │   │  API 호출       │
+└─────────────────┘   └─────────────────┘
+
+📊 대시보드 주요 화면:
+- 실시간 잔고 현황 (10초 갱신)
+- AI 추천 종목 (30초 갱신)
+- 매도 대상 종목 (30초 갱신)
+- 자동매매 제어 (5초 갱신)
 추가 리소스
 FastAPI 자동 문서: http://localhost:8000/docs
 프로젝트 상세 문서: CLAUDE.md

@@ -10,6 +10,7 @@ AI-powered stock trading system for NASDAQ top stocks combining Transformer-base
 ## 🎯 Key Features
 
 - **AI Price Prediction**: Dual-input Transformer model with 90-day lookback for 14-day forward predictions
+- **Real-time Dashboard**: Next.js web interface for monitoring, AI recommendations, and trading controls
 - **Real-time Trading**: Integration with Korea Investment Securities OpenAPI
 - **Economic Intelligence**: 60+ macro-economic indicators from FRED API
 - **Technical Analysis**: RSI, MACD, Golden/Dead Cross signals
@@ -43,11 +44,15 @@ AI-powered stock trading system for NASDAQ top stocks combining Transformer-base
 │  FastAPI Server │  main.py → REST API (Port 8000)
 │  (Real-time)    │
 └────────┬────────┘
-         ▼
-┌─────────────────┐
-│  Users/Apps     │  http://localhost:8000/docs
-│                 │
-└─────────────────┘
+         │
+         ├─────────────────────┐
+         │                     │
+         ▼                     ▼
+┌─────────────────┐   ┌─────────────────┐
+│   Web Dashboard │   │  External Apps  │
+│   Next.js       │   │  Mobile/Web     │
+│  localhost:3000 │   │  API Clients    │
+└─────────────────┘   └─────────────────┘
 ```
 
 ## 🚀 Quick Start
@@ -55,6 +60,7 @@ AI-powered stock trading system for NASDAQ top stocks combining Transformer-base
 ### Prerequisites
 
 - Python 3.8+ (recommended: 3.10+)
+- Node.js 18+ (recommended: 20.x LTS) - for dashboard
 - 4GB RAM minimum (8GB for model training)
 - 2GB disk space
 - API keys: FRED, Supabase, Korea Investment Securities
@@ -124,6 +130,23 @@ python run.py
 - Health check: http://localhost:8000
 - Interactive docs: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
+
+**Step 5: Start Dashboard (Optional)**
+```bash
+# Navigate to dashboard directory
+cd dashboard
+
+# Install dependencies (first time only)
+npm install
+
+# Copy environment variables
+cp .env.local.example .env.local
+
+# Start development server
+npm run dev
+```
+- Dashboard: http://localhost:3000
+- Real-time monitoring, AI recommendations, auto-trading controls
 
 ## 📡 API Endpoints
 
@@ -298,17 +321,21 @@ crontab -e
 
 ## 📚 Documentation
 
-- **User Guide**: [USERS_GUIDE.md](USERS_GUIDE.md) - Complete setup and usage instructions
+- **User Guide**: [USERS_GUIDE.md](USERS_GUIDE.md) - Complete setup and usage instructions (includes dashboard)
 - **Developer Guide**: [CLAUDE.md](CLAUDE.md) - Technical architecture and development notes
+- **Dashboard Guide**: [dashboard/README.md](dashboard/README.md) - Dashboard features and setup
 - **API Docs**: http://localhost:8000/docs (auto-generated Swagger UI)
 
 ## 🛠️ Tech Stack
 
 - **Backend**: Python 3.8+, FastAPI, Uvicorn
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **AI/ML**: TensorFlow 2.x, Keras, NumPy, Pandas
 - **Database**: Supabase (PostgreSQL)
 - **Data Sources**: FRED API, Yahoo Finance, Alpha Vantage
 - **Trading API**: Korea Investment Securities OpenAPI
+- **UI Components**: shadcn/ui, Radix UI, Lucide Icons
+- **Data Fetching**: SWR (auto-revalidation), Axios
 - **Utils**: python-dotenv, pytz, scikit-learn
 
 ## 📈 Performance
