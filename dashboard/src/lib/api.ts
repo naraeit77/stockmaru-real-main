@@ -99,4 +99,25 @@ export const tradingHistoryApi = {
   },
 };
 
+// 종목 관리 API
+export const stockManagementApi = {
+  // 종목 목록 조회
+  getStocks: () => api.get('/api/management/stocks'),
+
+  // 종목 개수 조회
+  getStockCount: () => api.get('/api/management/stocks/count'),
+
+  // 종목 추가
+  addStock: (ticker: string, korean_name: string) =>
+    api.post('/api/management/stocks/add', { ticker, korean_name }),
+
+  // 종목 삭제
+  removeStock: (korean_name: string) =>
+    api.delete('/api/management/stocks/remove', { data: { korean_name } }),
+
+  // 종목명 변경
+  renameStock: (old_name: string, new_name: string) =>
+    api.put('/api/management/stocks/rename', { old_name, new_name }),
+};
+
 export default api;

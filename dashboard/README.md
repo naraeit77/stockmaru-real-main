@@ -29,6 +29,14 @@ Next.js 기반의 AI 자동매매 시스템 실시간 대시보드입니다.
 - 다음 실행 시간 표시
 - 5초마다 자동 갱신
 
+### ⚙️ 종목 관리 (NEW!)
+- 웹 인터페이스로 종목 추가/삭제/변경
+- 실시간 종목 목록 조회 (자동 새로고침)
+- 직관적인 탭 기반 UI
+- 다음 단계 안내 (캐시 삭제, 데이터 수집, 모델 재학습)
+- 자동완성 지원
+- 상세 가이드: [STOCK_MANAGEMENT_GUIDE.md](./STOCK_MANAGEMENT_GUIDE.md)
+
 ## 기술 스택
 
 - **Framework**: Next.js 15 (App Router)
@@ -62,4 +70,22 @@ npm start
 ⚠️ **백엔드 서버 필수**: FastAPI 백엔드 서버가 실행 중이어야 정상 작동합니다.
 
 백엔드 서버 실행:
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```bash
+cd ..
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+## 종목 관리
+
+종목 추가/삭제/변경은 웹 인터페이스를 통해 간편하게 할 수 있습니다.
+
+1. 대시보드 접속: http://localhost:3000
+2. 우측 상단 **"종목 관리"** 버튼 클릭
+3. 종목 추가/삭제/변경 수행
+4. 작업 후 필수 단계 진행:
+   - 캐시 삭제: `rm ../*_cache.pkl`
+   - 데이터 수집: `python ../stock.py`
+   - 모델 재학습: `python ../predict.py`
+   - 서버 재시작
+
+자세한 내용은 [STOCK_MANAGEMENT_GUIDE.md](./STOCK_MANAGEMENT_GUIDE.md)를 참고하세요.

@@ -1,6 +1,12 @@
 # Supabase 클라이언트 설정
 import subprocess
 import sys
+import os
+import time
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 try:
     from supabase import create_client, Client
@@ -16,15 +22,61 @@ from tensorflow.keras.layers import (
 )
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 import json
+import pickle
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-# Supabase 연결 설정
-url: str = ""
-key: str = ""
+# 하드웨어 가속 설정
+print("=" * 50)
+print("하드웨어 가속 설정")
+print("=" * 50)
+
+# CPU 최적화 설정
+tf.config.threading.set_intra_op_parallelism_threads(0)  # 자동 설정
+tf.config.threading.set_inter_op_parallelism_threads(0)  # 자동 설정
+
+# GPU/Metal 감지
+gpus = tf.config.list_physical_devices('GPU')
+all_devices = tf.config.list_physical_devices()
+
+print(f"TensorFlow 버전: {tf.__version__}")
+print(f"사용 가능한 디바이스: {[d.device_type for d in all_devices]}")
+
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"✅ GPU 사용 가능: {len(gpus)}개 GPU 감지")
+        # Mixed Precision 활성화 (GPU 성능 향상)
+        tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        print("✅ Mixed Precision (FP16) 활성화")
+    except RuntimeError as e:
+        print(f"⚠️  GPU 설정 오류: {e}")
+        gpus = None
+else:
+    print("ℹ️  GPU를 사용할 수 없습니다. CPU로 학습합니다.")
+    print("💡 Mac에서 GPU 가속을 원하시면 TensorFlow 2.13-2.15 버전과 tensorflow-metal을 설치하세요:")
+    print("   pip uninstall tensorflow")
+    print("   pip install tensorflow==2.15.0 tensorflow-metal")
+
+    # CPU 최적화 활성화
+    import os as os_env
+    os_env.environ['TF_ENABLE_ONEDNN_OPTS'] = '1'
+    print("✅ CPU 최적화 활성화 (oneDNN)")
+
+print("=" * 50)
+
+# Supabase 연결 설정 (.env 파일에서 읽기)
+url: str = os.getenv("SUPABASE_URL", "")
+key: str = os.getenv("SUPABASE_KEY", "")
+
+if not url or not key:
+    raise ValueError("SUPABASE_URL과 SUPABASE_KEY가 .env 파일에 설정되어 있어야 합니다.")
+
 supabase: Client = create_client(url, key)
 
 # Supabase에서 데이터 가져오기
@@ -86,10 +138,29 @@ def get_stock_data_from_db():
         print(f"데이터 가져오기 오류: {e}")
         return None
 
-def get_all_data(table_name):
+def get_all_data(table_name, use_cache=True):
+    """
+    Supabase에서 모든 데이터 가져오기 (캐싱 지원)
+
+    Args:
+        table_name: 테이블 이름
+        use_cache: 캐시 사용 여부 (기본: True)
+    """
+    cache_file = f"{table_name}_cache.pkl"
+
+    # 캐시 파일이 있고 24시간 이내면 캐시 사용
+    if use_cache and os.path.exists(cache_file):
+        cache_age = time.time() - os.path.getmtime(cache_file)
+        if cache_age < 86400:  # 24시간 = 86400초
+            print(f"캐시된 데이터 사용 (캐시 나이: {cache_age/3600:.1f}시간)")
+            with open(cache_file, 'rb') as f:
+                return pickle.load(f)
+
+    print(f"{table_name} 테이블에서 데이터 로딩 중...")
     all_data = []
     offset = 0
     limit = 1000  # Supabase의 기본 제한
+
     while True:
         response = supabase.table(table_name).select("*").order("날짜", desc=False).limit(limit).offset(offset).execute()
         data = response.data
@@ -97,6 +168,16 @@ def get_all_data(table_name):
             break
         all_data.extend(data)
         offset += limit
+        print(f"  {len(all_data)}개 로드됨...", end='\r')
+
+    print(f"  총 {len(all_data)}개 로드 완료")
+
+    # 캐시 저장
+    if use_cache:
+        with open(cache_file, 'wb') as f:
+            pickle.dump(all_data, f)
+        print(f"캐시 파일 저장: {cache_file}")
+
     return all_data
 
 # Transformer Encoder 정의
@@ -132,7 +213,9 @@ def build_transformer_with_two_inputs(stock_shape, econ_shape, num_heads, ff_dim
     merged = Dense(128, activation="relu")(merged)
     merged = Dropout(0.2)(merged)
     merged = GlobalAveragePooling1D()(merged)
-    outputs = Dense(target_size)(merged)
+
+    # Mixed Precision 사용 시 출력 레이어는 float32로 설정
+    outputs = Dense(target_size, dtype='float32')(merged)
 
     return Model(inputs=[stock_inputs, econ_inputs], outputs=outputs)
 
@@ -155,7 +238,7 @@ target_columns = [
     '애플', '마이크로소프트', '아마존', '구글 A', '구글 C', '메타',
     '테슬라', '엔비디아', '코스트코', '넷플릭스', '페이팔', '인텔', '시스코', '컴캐스트',
     '펩시코', '암젠', '허니웰 인터내셔널', '스타벅스', '몬델리즈', '마이크론', '브로드컴',
-    '어도비', '텍사스 인스트루먼트', 'AMD', '어플라이드 머티리얼즈', 'S&P 500 ETF', 'QQQ ETF'
+    '어도비', '텍사스 인스트루먼트', 'AMD', '어플라이드 머티리얼즈', 'S&P 500 ETF', 'QQQ ETF', 'string'
 ]
 
 economic_features = [
@@ -221,7 +304,44 @@ model.compile(optimizer=Adam(learning_rate=0.0001), loss='mse', metrics=['mae'])
 model.summary()
 
 print("Training model...")
-history = model.fit([X_stock_train, X_econ_train], y_train, epochs=50, batch_size=32, verbose=1)
+
+# 콜백 설정
+callbacks = [
+    # Early Stopping: 검증 손실이 10 에포크 동안 개선되지 않으면 학습 중단
+    EarlyStopping(
+        monitor='loss',
+        patience=10,
+        restore_best_weights=True,
+        verbose=1
+    ),
+    # Model Checkpoint: 최상의 모델 저장
+    ModelCheckpoint(
+        'best_stock_model.keras',
+        monitor='loss',
+        save_best_only=True,
+        verbose=1
+    ),
+    # Learning Rate Reduction: 학습이 정체되면 학습률 감소
+    ReduceLROnPlateau(
+        monitor='loss',
+        factor=0.5,
+        patience=5,
+        min_lr=1e-7,
+        verbose=1
+    )
+]
+
+# 배치 크기를 64로 증가 (GPU 사용 시 성능 향상)
+batch_size = 64 if gpus else 32
+
+history = model.fit(
+    [X_stock_train, X_econ_train],
+    y_train,
+    epochs=50,
+    batch_size=batch_size,
+    callbacks=callbacks,
+    verbose=1
+)
 
 print("Performing full predictions...")
 predicted_prices = model.predict([X_stock_full, X_econ_full], verbose=1)

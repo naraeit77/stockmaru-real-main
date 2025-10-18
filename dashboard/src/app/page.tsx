@@ -9,7 +9,8 @@ import TradingHistoryCard from '@/components/Dashboard/TradingHistoryCard';
 import TradingHoursCard from '@/components/Dashboard/TradingHoursCard';
 import DepositCard from '@/components/Dashboard/DepositCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Settings } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -29,9 +30,18 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 오른쪽: 매매 가능 시간 */}
-            <div className="w-80">
-              <TradingHoursCard />
+            {/* 오른쪽: 설정 버튼 & 매매 가능 시간 */}
+            <div className="flex items-center gap-4">
+              <Link
+                href="/stock-management"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors shadow-lg"
+              >
+                <Settings className="h-5 w-5" />
+                종목 관리
+              </Link>
+              <div className="w-80">
+                <TradingHoursCard />
+              </div>
             </div>
           </div>
         </div>

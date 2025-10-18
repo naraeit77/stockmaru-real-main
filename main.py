@@ -1,22 +1,42 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import uvicorn
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import pandas as pd
 from datetime import datetime
 import json
+from pathlib import Path
+
+# 한글을 유니코드 이스케이프 없이 직접 전송하는 커스텀 JSONResponse
+class UnicodeJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+        ).encode("utf-8")
 
 # 기존 모듈 임포트
 from dbConnection import supabase
 from getBalance import get_domestic_balance
 import stock  # stock.py 모듈 임포트
 
+# API 라우터 임포트
+from app.api.routes import stock_management
+
 app = FastAPI(
     title="주식 분석 API",
     description="해외주식 잔고 조회 및 주식 예측 API",
-    version="1.0.0"
+    version="1.0.0",
+    default_response_class=UnicodeJSONResponse  # 한글 직접 전송
 )
+
+# 라우터 등록
+app.include_router(stock_management.router, prefix="/api/management", tags=["Stock Management"])
 
 # CORS 설정
 app.add_middleware(
@@ -44,7 +64,11 @@ class UpdateResponse(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"message": "주식 분석 API에 오신 것을 환영합니다!"}
+    return {
+        "message": "주식 분석 API에 오신 것을 환영합니다!",
+        "dashboard": "http://localhost:3000",
+        "docs": "/docs"
+    }
 
 @app.get("/balance", summary="해외주식 잔고 조회")
 def get_balance():
@@ -174,4 +198,31 @@ async def update_data_in_background():
         raise
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        # 한글 인코딩을 위한 설정
+        log_config={
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "default": {
+                    "format": "%(levelprefix)s %(message)s",
+                },
+            },
+            "handlers": {
+                "default": {
+                    "formatter": "default",
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                },
+            },
+            "loggers": {
+                "uvicorn": {"handlers": ["default"], "level": "INFO"},
+                "uvicorn.error": {"level": "INFO"},
+                "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
+            },
+        }
+    ) 

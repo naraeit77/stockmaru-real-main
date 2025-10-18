@@ -135,16 +135,27 @@ class StockScheduler:
             return False
     
     async def _execute_auto_sell(self):
-        """자동 매도 실행 로직"""
+        """
+        자동 매도 실행 로직
+
+        매도 조건:
+        1. 구매가 대비 현재가가 +5% 이상(익절) 또는 -5% 이하(손절)
+        2. 감성 점수 < -0.15이고 기술적 지표 중 2개 이상 매도 신호
+        3. 기술적 지표 중 3개 이상 매도 신호
+
+        실행 방식:
+        - 장중에 1분마다 보유 종목의 현재가를 API로 조회
+        - 각 종목에 대해 매도 조건 확인 후 매도 주문 실행
+        """
         # 현재 시간이 미국 장 시간인지 확인 (서머타임 고려)
         now_in_korea = datetime.now(pytz.timezone('Asia/Seoul'))
-        
+
         # 미국 뉴욕 시간 (서머타임 자동 고려)
         now_in_ny = datetime.now(pytz.timezone('America/New_York'))
         ny_hour = now_in_ny.hour
         ny_minute = now_in_ny.minute
         ny_weekday = now_in_ny.weekday()  # 0=월요일, 6=일요일
-        
+
         # 미국 주식 시장은 평일(월-금) 9:30 AM - 4:00 PM ET
         is_weekday = 0 <= ny_weekday <= 4  # 월요일에서 금요일까지
         is_market_open_time = (
@@ -152,23 +163,23 @@ class StockScheduler:
             (10 <= ny_hour < 16) or
             (ny_hour == 16 and ny_minute == 0)
         )
-        
+
         is_market_hours = is_weekday and is_market_open_time
-        
+
         if not is_market_hours:
             # 주말이거나 장 시간이 아닌 경우
             logger.info(f"현재 시간 {now_in_korea.strftime('%Y-%m-%d %H:%M:%S')} (뉴욕: {now_in_ny.strftime('%Y-%m-%d %H:%M:%S')})은 미국 장 시간이 아닙니다. 매도 작업을 건너뜁니다.")
             return
-        
+
         logger.info(f"미국 장 시간 확인: {now_in_korea.strftime('%Y-%m-%d %H:%M:%S')} (뉴욕: {now_in_ny.strftime('%Y-%m-%d %H:%M:%S')})")
-        
-        # 매도 대상 종목 조회
+
+        # 매도 대상 종목 조회 (get_stocks_to_sell 함수가 현재가 API 호출하여 실시간으로 판단)
         sell_candidates_result = self.recommendation_service.get_stocks_to_sell()
-        
+
         if not sell_candidates_result or not sell_candidates_result.get("sell_candidates"):
             logger.info("매도 대상 종목이 없습니다.")
             return
-        
+
         sell_candidates = sell_candidates_result.get("sell_candidates", [])
         logger.info(f"매도 대상 종목 {len(sell_candidates)}개를 찾았습니다.")
         
@@ -179,52 +190,23 @@ class StockScheduler:
                 stock_name = candidate["stock_name"]
                 exchange_code = candidate["exchange_code"]
                 quantity = candidate["quantity"]
-                
+                current_price = candidate["current_price"]  # get_stocks_to_sell()에서 이미 현재가 조회함
+
                 # 매도 근거 로그 출력
                 sell_reasons = candidate.get("sell_reasons", [])
                 reasons_str = "; ".join(sell_reasons)
                 logger.info(f"{stock_name}({ticker}) 매도 근거: {reasons_str}")
-                
-                # 거래소 코드 변환 (API 요청에 맞게 변환)
-                api_exchange_code = exchange_code
-                if exchange_code == "NASD":
-                    api_exchange_code = "NAS"
-                elif exchange_code == "NYSE":
-                    api_exchange_code = "NYS"
-                
-                # 현재가 조회
-                price_params = {
-                    "AUTH": "",
-                    "EXCD": api_exchange_code,  # 변환된 거래소 코드 사용
-                    "SYMB": ticker
-                }
-                
-                logger.info(f"{stock_name}({ticker}) 현재가 조회 요청. 거래소: {api_exchange_code}, 심볼: {ticker}")
-                price_result = get_current_price(price_params)
-                
-                if price_result.get("rt_cd") != "0":
-                    logger.error(f"{stock_name}({ticker}) 현재가 조회 실패: {price_result.get('msg1', '알 수 없는 오류')}")
-                    # API 속도 제한에 도달했을 때 더 오래 대기
-                    if "초당" in price_result.get('msg1', ''):
-                        await asyncio.sleep(3)  # 속도 제한 오류 시 3초 대기
-                    continue
-                
-                # 현재가 추출 (안전하게 처리)
-                last_price = price_result.get("output", {}).get("last", "")
-                try:
-                    # 빈 문자열이나 None 체크
-                    if not last_price or last_price == "":
-                        logger.error(f"{stock_name}({ticker}) 현재가가 비어있습니다. 다음 API 호출에서 다시 시도합니다.")
-                        await asyncio.sleep(2)  # 잠시 기다렸다가 넘어감
-                        continue
-                    
-                    current_price = float(last_price)
-                    
-                    if current_price <= 0:
-                        logger.error(f"{stock_name}({ticker}) 현재가가 유효하지 않습니다: {current_price}")
-                        continue
-                except ValueError as ve:
-                    logger.error(f"{stock_name}({ticker}) 현재가 변환 오류: {str(ve)}, 값: '{last_price}'")
+                logger.info(f"  - 구매가: ${candidate.get('purchase_price', 0):.2f}, 현재가: ${current_price:.2f}, 손익률: {candidate.get('price_change_percent', 0):.2f}%")
+
+                if candidate.get("technical_sell_signals", 0) > 0:
+                    logger.info(f"  - 기술적 매도 신호 {candidate.get('technical_sell_signals')}개: {', '.join(candidate.get('technical_sell_details', []))}")
+
+                if candidate.get("sentiment_score") is not None:
+                    logger.info(f"  - 감정 점수: {candidate.get('sentiment_score'):.3f}")
+
+                # 현재가 유효성 검증
+                if current_price <= 0:
+                    logger.error(f"{stock_name}({ticker}) 현재가가 유효하지 않습니다: {current_price}")
                     continue
                 
                 # 매도 주문 실행
@@ -257,41 +239,53 @@ class StockScheduler:
         logger.info("자동 매도 처리가 완료되었습니다.")
     
     async def _execute_auto_buy(self):
-        """자동 매수 실행 로직"""
+        """
+        자동 매수 실행 로직
+
+        매수 조건:
+        - 1번: AI 예측 (Accuracy >= 80%, Rise Probability >= 3%)
+        - 2번: 기술적 지표 (Golden Cross, RSI < 50, MACD 매수 신호)
+        - 3번: 뉴스 감정 점수 >= 0.15
+
+        매수 대상:
+        - (1번 통과 AND 3번 만족 AND 2번 중 2개 이상) OR
+        - (1번 통과 AND 2번 중 3개 이상)
+        """
         # 보유 종목 조회
         try:
             balance_result = get_all_overseas_balances()
             if balance_result.get("rt_cd") != "0":
                 logger.error(f"보유 종목 조회 실패: {balance_result.get('msg1', '알 수 없는 오류')}")
                 return
-            
+
             # 보유 종목 티커 추출
             holdings = balance_result.get("output1", [])
             holding_tickers = set()
-            
+
             for item in holdings:
                 ticker = item.get("ovrs_pdno")
                 if ticker:
                     holding_tickers.add(ticker)
-            
+
             logger.info(f"현재 보유 중인 종목 수: {len(holding_tickers)}")
         except Exception as e:
             logger.error(f"보유 종목 조회 중 오류 발생: {str(e)}", exc_info=True)
             return
-            
-        # StockRecommendationService에서 이미 필터링된 매수 대상 종목 가져오기
+
+        # get_combined_recommendations_with_technical_and_sentiment() 호출하여 매수 대상 종목 추출
+        # 이 함수는 위의 매수 조건을 모두 확인하여 필터링된 결과를 반환함
         recommendations = self.recommendation_service.get_combined_recommendations_with_technical_and_sentiment()
-        
+
         if not recommendations or not recommendations.get("results"):
             logger.info("매수 대상 종목이 없습니다.")
             return
-        
+
         buy_candidates = recommendations.get("results", [])
-        
+
         if not buy_candidates:
             logger.info("매수 조건을 만족하는 종목이 없습니다.")
             return
-        
+
         logger.info(f"매수 대상 종목 {len(buy_candidates)}개를 찾았습니다.")
         
         # 각 종목에 대해 API 호출하여 현재 체결가 조회 및 매수 주문
@@ -299,7 +293,25 @@ class StockScheduler:
             try:
                 ticker = candidate["ticker"]
                 stock_name = candidate["stock_name"]
-                
+
+                # 매수 근거 로그 출력
+                tech_conditions = [candidate.get("golden_cross"), candidate.get("rsi", 100) < 50, candidate.get("macd_buy_signal")]
+                tech_count = sum(tech_conditions)
+                has_sentiment = candidate.get("sentiment_score") is not None and candidate.get("sentiment_score", 0) >= 0.15
+
+                buy_reason = ""
+                if has_sentiment and tech_count >= 2:
+                    buy_reason = f"조건 A (감정 점수 {candidate.get('sentiment_score', 0):.3f} + 기술지표 {tech_count}/3개)"
+                elif tech_count >= 3:
+                    buy_reason = f"조건 B (기술지표 {tech_count}/3개 만족)"
+                else:
+                    buy_reason = "알 수 없음"
+
+                logger.info(f"{stock_name}({ticker}) 매수 근거: {buy_reason}")
+                logger.info(f"  - AI 예측: Accuracy {candidate.get('accuracy', 0):.1f}%, Rise Probability {candidate.get('rise_probability', 0):.1f}%")
+                logger.info(f"  - 기술지표: Golden Cross={candidate.get('golden_cross')}, RSI={candidate.get('rsi', 0):.1f}, MACD Signal={candidate.get('macd_buy_signal')}")
+                logger.info(f"  - 감정 점수: {candidate.get('sentiment_score', 'N/A')}")
+
                 # 거래소 코드 결정 (미국 주식 기준)
                 if ticker.endswith(".X") or ticker.endswith(".N"):
                     # 거래소 구분이 티커에 포함된 경우
@@ -309,7 +321,7 @@ class StockScheduler:
                     # 기본값 NASDAQ으로 설정
                     exchange_code = "NASD"
                     pure_ticker = ticker
-                
+
                 # 이미 보유 중인 종목인지 확인
                 if pure_ticker in holding_tickers:
                     logger.info(f"{stock_name}({ticker}) - 이미 보유 중인 종목이므로 매수하지 않습니다.")

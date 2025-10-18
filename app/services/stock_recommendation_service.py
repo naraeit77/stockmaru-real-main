@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from app.db.supabase import supabase
 import numpy as np
 from app.core.config import settings
-from app.services.balance_service import get_overseas_balance
+from app.services.balance_service import get_overseas_balance, get_current_price
 
 # 한국어 주식명과 티커 심볼 매핑
 STOCK_TO_TICKER = {
@@ -35,7 +35,8 @@ STOCK_TO_TICKER = {
     "AMD": "AMD",
     "어플라이드 머티리얼즈": "AMAT",
     "S&P 500 ETF": "SPY",
-    "QQQ ETF": "QQQ"
+    "QQQ ETF": "QQQ",
+    "string": "STRING"
 }
 
 class StockRecommendationService:
@@ -438,13 +439,30 @@ class StockRecommendationService:
                 results.append(combined_data)
             
             # 6. 매수 추천 조건에 따른 추가 필터링 후 순위 계산
-            # 수정: 기술적 지표 2개 이상이면 모두 추천 (감정 점수 무관)
+            # 새로운 조건:
+            # - 1번 통과 (AI 예측: Accuracy >= 80%, Rise Probability >= 3%) 이미 results에 포함됨
+            # - 2번: 기술적 지표 (Golden Cross, RSI < 50, MACD 매수 신호)
+            # - 3번: 뉴스 감정 점수 >= 0.15
+            #
+            # 매수 조건:
+            # (1번 통과 AND 3번 만족 AND 2번 중 2개 이상) OR (1번 통과 AND 2번 중 3개 이상)
             final_results = []
             for item in results:
+                # 기술적 지표 조건 (2번)
                 tech_conditions = [item["golden_cross"], item["rsi"] < 50, item["macd_buy_signal"]]
+                tech_count = sum(tech_conditions)
 
-                # 기술적 지표 3가지 중 2개 이상 만족하면 추천
-                if sum(tech_conditions) >= 2:
+                # 뉴스 감정 조건 (3번)
+                has_good_sentiment = item["sentiment_score"] is not None and item["sentiment_score"] >= 0.15
+
+                # 매수 조건 판단
+                # 조건 A: 1번 통과 + 3번 만족 + 2번 중 2개 이상
+                condition_a = has_good_sentiment and tech_count >= 2
+
+                # 조건 B: 1번 통과 + 2번 중 3개 이상
+                condition_b = tech_count >= 3
+
+                if condition_a or condition_b:
                     final_results.append(item)
 
             # 7. 종합 점수 계산 및 정렬
@@ -478,12 +496,12 @@ class StockRecommendationService:
     def get_stocks_to_sell(self):
         """
         매도 대상 종목을 식별하는 함수
-        
+
         매도 조건:
-        1. 구매가 대비 현재가가 +5% 이상(익절) 또는 -7% 이하(손절)인 종목
+        1. 구매가 대비 현재가가 +5% 이상(익절) 또는 -5% 이하(손절)인 종목
         2. 감성 점수 < -0.15이고 기술적 지표 중 2개 이상 매도 신호인 종목
         3. 기술적 지표 중 3개 이상 매도 신호인 종목
-        
+
         반환값:
         - sell_candidates: 매도 대상 종목 목록
         - technical_data: 종목별 기술적 지표 데이터
@@ -543,10 +561,45 @@ class StockRecommendationService:
                 ticker = item.get("ovrs_pdno")
                 stock_name = item.get("ovrs_item_name")
                 purchase_price = float(item.get("pchs_avg_pric", 0))
-                current_price = float(item.get("now_pric2", 0))
                 quantity = int(item.get("ovrs_cblc_qty", 0))
                 exchange_code = item.get("ovrs_excg_cd", "")
-                
+
+                # 현재가 API 호출하여 실시간 가격 조회
+                api_exchange_code = exchange_code
+                if exchange_code == "NASD":
+                    api_exchange_code = "NAS"
+                elif exchange_code == "NYSE":
+                    api_exchange_code = "NYS"
+
+                price_params = {
+                    "AUTH": "",
+                    "EXCD": api_exchange_code,
+                    "SYMB": ticker
+                }
+
+                # 현재가 조회
+                price_result = get_current_price(price_params)
+
+                if price_result.get("rt_cd") != "0":
+                    print(f"{stock_name}({ticker}) 현재가 조회 실패: {price_result.get('msg1', '알 수 없는 오류')}")
+                    continue
+
+                # 현재가 추출
+                last_price = price_result.get("output", {}).get("last", "")
+                try:
+                    if not last_price or last_price == "":
+                        print(f"{stock_name}({ticker}) 현재가가 비어있습니다. 건너뜁니다.")
+                        continue
+
+                    current_price = float(last_price)
+
+                    if current_price <= 0:
+                        print(f"{stock_name}({ticker}) 현재가가 유효하지 않습니다: {current_price}")
+                        continue
+                except ValueError as ve:
+                    print(f"{stock_name}({ticker}) 현재가 변환 오류: {str(ve)}, 값: '{last_price}'")
+                    continue
+
                 # 가격 변동률 계산
                 price_change_percent = ((current_price - purchase_price) / purchase_price) * 100 if purchase_price > 0 else 0
                 
@@ -557,7 +610,7 @@ class StockRecommendationService:
                 # 조건 1: 가격 기반 매도 (익절/손절)
                 if price_change_percent >= 5:
                     sell_reasons.append(f"익절 조건 충족: 구매가 대비 {price_change_percent:.2f}% 상승")
-                elif price_change_percent <= -7:
+                elif price_change_percent <= -5:
                     sell_reasons.append(f"손절 조건 충족: 구매가 대비 {price_change_percent:.2f}% 하락")
                 
                 # 기술적 지표 확인
@@ -610,7 +663,10 @@ class StockRecommendationService:
                         "sentiment_score": sentiment_score,
                         "technical_data": tech_record
                     })
-            
+
+                # API 속도 제한 방지를 위한 지연 (각 보유 종목 조회 후)
+                time.sleep(1)
+
             # 가격 변동률이 큰 순서로 정렬 (절대값 기준)
             sell_candidates.sort(key=lambda x: abs(x["price_change_percent"]), reverse=True)
             

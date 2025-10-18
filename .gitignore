@@ -43,6 +43,14 @@ total.csv
 total_data.csv
 stock_analysis_results_rows.csv
 
+# Model Files
+best_stock_model.keras
+*.keras
+*.h5
+
+# Cache Files
+*_cache.pkl
+
 # Jupyter Notebooks
 .ipynb_checkpoints/
 

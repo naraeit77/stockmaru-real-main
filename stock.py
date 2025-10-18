@@ -4,12 +4,17 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import numpy as np
 import time
+import os
+from dotenv import load_dotenv
 
+# .env 파일 로드
+load_dotenv()
 
+# FRED API Key 설정 (.env 파일에서 읽기)
+api_key = os.getenv('FRED_API_KEY', '')
 
-
-# FRED API Key 설정
-api_key = '여러분들의 fred api key를 넣어주세요.'
+if not api_key:
+    raise ValueError("FRED_API_KEY가 .env 파일에 설정되어 있어야 합니다.")
 
 # FRED에서 제공하는 지표 코드와 명칭
 fred_indicators = {
